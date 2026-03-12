@@ -1,0 +1,467 @@
+{
+  "name": "AI Lead Enrichment and Qualification Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-capture",
+        "options": {}
+      },
+      "id": "e964733e-6a6b-4933-98ac-374ded4cc277",
+      "name": "📥 New Lead Capture",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        256,
+        400
+      ],
+      "webhookId": "45034c11-2fe9-48a4-8caf-977efb99ebe2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "name",
+              "value": "={{ $json.body.name }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "email",
+              "value": "={{ $json.body.email }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "company",
+              "value": "={{ $json.body.company }}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "website",
+              "value": "={{ $json.body.website }}",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "need",
+              "value": "={{ $json.body.need }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9b24fa35-2494-4477-9af2-30d5ce084bb7",
+      "name": "🧹 Clean Lead Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.clearbit.com/v2/companies/find?domain={{ $json.website }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer <__PLACEHOLDER_VALUE__clearbit_api_key__>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7fe88a0f-c8c0-42c1-8b83-2b6f1126e159",
+      "name": "🌐 Fetch Company Info",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        704,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gpt-4o-mini"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=You are a lead qualification expert. Analyze the following lead information and return ONLY valid JSON with no additional text.\n\nLead Information:\n- Name: {{ $json.name }}\n- Email: {{ $json.email }}\n- Company: {{ $json.company }}\n- Website: {{ $json.website }}\n- Need: {{ $json.need }}\n- Company Info: {{ $('🌐 Fetch Company Info').item.json }}\n\nReturn JSON in this exact format:\n{\n  \"company_summary\": \"brief summary of the company\",\n  \"industry\": \"industry name\",\n  \"pain_points\": [\"pain point 1\", \"pain point 2\"],\n  \"lead_score\": 75,\n  \"lead_temperature\": \"hot\",\n  \"recommended_offer\": \"specific automation service\",\n  \"personalized_outreach\": \"professional outreach message\"\n}\n\nRules:\n- lead_score: 0-100\n- lead_temperature: must be \"hot\", \"warm\", or \"cold\"\n- Return ONLY the JSON object, no markdown, no explanation"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "936f4364-51a1-467b-b29c-600cc8e9839f",
+      "name": "🤖 AI Lead Analysis",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        928,
+        400
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "V2ReYQHbylCT0cil",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.lead_temperature }}",
+                    "rightValue": "hot",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "hot"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.lead_temperature }}",
+                    "rightValue": "warm",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "warm"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.lead_temperature }}",
+                    "rightValue": "cold",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cold"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "210c1339-02f4-4521-9ae4-738fd0291c2b",
+      "name": "🌡️ Route by Temperature",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1504,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "id": "02b0ceee-45ce-443d-90eb-60474d75d8ff",
+      "name": "📊 Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1728,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "NjwTGACaosDv42Tp",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "<__PLACEHOLDER_VALUE__sales_team_email__>",
+        "subject": "=🔥 HOT LEAD ALERT: {{ $json.name }} from {{ $json.company }}",
+        "message": "=<h2>🔥 Hot Lead Alert</h2>\n<p><strong>Lead Details:</strong></p>\n<ul>\n  <li><strong>Name:</strong> {{ $json.name }}</li>\n  <li><strong>Email:</strong> {{ $json.email }}</li>\n  <li><strong>Company:</strong> {{ $json.company }}</li>\n  <li><strong>Website:</strong> {{ $json.website }}</li>\n  <li><strong>Need:</strong> {{ $json.need }}</li>\n</ul>\n\n<p><strong>AI Analysis:</strong></p>\n<ul>\n  <li><strong>Lead Score:</strong> {{ $json.lead_score }}/100</li>\n  <li><strong>Temperature:</strong> {{ $json.lead_temperature }}</li>\n  <li><strong>Industry:</strong> {{ $json.industry }}</li>\n  <li><strong>Recommended Offer:</strong> {{ $json.recommended_offer }}</li>\n</ul>\n\n<p><strong>Company Summary:</strong><br>\n{{ $json.company_summary }}</p>\n\n<p><strong>Pain Points:</strong></p>\n<ul>\n  {{ $json.pain_points.map(p => `<li>${p}</li>`).join('') }}\n</ul>\n\n<p><em>This is a high-priority lead. Follow up immediately!</em></p>",
+        "options": {}
+      },
+      "id": "08eca071-5b7b-4a91-a031-f37c8372e0d2",
+      "name": "🔥 Hot Lead Alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2176,
+        304
+      ],
+      "webhookId": "2a12b91d-4574-4138-b82f-ec8cf967e8e5",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mkJF4X87okSAQqjP",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=Re: {{ $json.need }}",
+        "emailType": "text",
+        "message": "={{ $json.personalized_outreach }}",
+        "options": {}
+      },
+      "id": "f41aacb9-09bc-4c12-b9ab-cc62662d1dcf",
+      "name": "📧 Send Personalized Outreach",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1952,
+        496
+      ],
+      "webhookId": "be0d2ef0-99e7-4d78-87bc-f2f27bbc9793",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mkJF4X87okSAQqjP",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $json.lead_temperature }}",
+              "rightValue": "hot",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bdbcc165-88c9-4112-b442-b733eeae227e",
+      "name": "🔥 Is Hot Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1952,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "content": "AI LEAD ENRICHMENT & QUALIFICATION SYSTEM\n\nFeatures:\n• Lead capture\n• Company enrichment\n• AI lead scoring\n• Hot/warm/cold classification\n• Personalized outreach\n• CRM storage",
+        "height": 208,
+        "width": 672
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        784,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "bc0b2a6f-dad6-40fc-9688-1ac056669bd0",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "const leadData = $('🧹 Clean Lead Data').item.json;\nconst aiResponse = $json.message.content;\n\n// Parse the JSON response from OpenAI\nlet aiData;\ntry {\n  aiData = JSON.parse(aiResponse);\n} catch (error) {\n  // If parsing fails, try to extract JSON from markdown code blocks\n  const jsonMatch = aiResponse.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n  if (jsonMatch) {\n    aiData = JSON.parse(jsonMatch[1]);\n  } else {\n    throw new Error('Failed to parse AI response as JSON');\n  }\n}\n\n// Merge lead data with AI analysis\nreturn [{\n  json: {\n    ...leadData,\n    ...aiData\n  }\n}];"
+      },
+      "id": "5bae68b8-107f-4014-94b3-96d630464ced",
+      "name": "🧩 Parse AI Lead Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        400
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "🤖 AI Lead Analysis": {
+      "main": [
+        [
+          {
+            "node": "🧩 Parse AI Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📥 New Lead Capture": {
+      "main": [
+        [
+          {
+            "node": "🧹 Clean Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧹 Clean Lead Data": {
+      "main": [
+        [
+          {
+            "node": "🌐 Fetch Company Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Fetch Company Info": {
+      "main": [
+        [
+          {
+            "node": "🤖 AI Lead Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌡️ Route by Temperature": {
+      "main": [
+        [
+          {
+            "node": "📊 Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📊 Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📊 Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📊 Save to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "📧 Send Personalized Outreach",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "🔥 Is Hot Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔥 Is Hot Lead?": {
+      "main": [
+        [
+          {
+            "node": "🔥 Hot Lead Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧩 Parse AI Lead Data": {
+      "main": [
+        [
+          {
+            "node": "🌡️ Route by Temperature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "2970fb2a-c112-4f91-b33e-3e227ccc378f",
+  "meta": {
+    "instanceId": "664a2037a0a7e61fdd5522f4f97694ac39ebddd8e39e7f0c407a1ef379117ba9"
+  },
+  "id": "p3YpivCgCHjaRvPk",
+  "tags": []
+}
